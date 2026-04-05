@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(git clone:*)",
+      "Bash(DEST=\"C:\\\\Users\\\\Tony\\\\Documents\\\\GitHub\\\\WorldGen2\\\\src\\\\engine\\\\terrain\\\\mapgen4\")",
+      "Bash(SRC=\"/tmp/mapgen4\")",
+      "Bash(__NEW_LINE_b6d295f87bbb2f6a__ cp:*)",
+      "Bash(cp \"$SRC/render.ts\" \"$DEST/\")",
+      "Bash(cp \"$SRC/worker.ts\" \"$DEST/\")",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node -e \":*)",
+      "Bash(npm test:*)",
+      "Bash(npx vitest:*)",
+      "Bash(find C:UsersTonyDocumentsGitHubWorldGen2src -type f -name *limat*)"
+    ]
+  }
+}
