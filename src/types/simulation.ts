@@ -24,4 +24,5 @@ export type LayerType =
   | 'climate'
   | 'political'
   | 'religion'
-  | 'culture';
+  | 'culture'
+  | 'events';

@@ -58,32 +58,11 @@ export class MapRenderer {
   private currentState: WorldState | null = null;
 
   // Stored so they can be removed in dispose()
-  private readonly _onMouseDown: (e: MouseEvent) => void;
-  private readonly _onMouseMove: (e: MouseEvent) => void;
-  private readonly _onMouseUp: () => void;
   private readonly _onWheel: (e: WheelEvent) => void;
   private readonly _onResize: () => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-
-    this._onMouseDown = (e) => {
-      this._isDragging = true;
-      this._lastX = e.clientX;
-      this._lastY = e.clientY;
-    };
-
-    this._onMouseMove = (e) => {
-      if (!this._isDragging) return;
-      const dx = e.clientX - this._lastX;
-      const dy = e.clientY - this._lastY;
-      this._lastX = e.clientX;
-      this._lastY = e.clientY;
-      this.camera.pan(dx, dy, canvas.clientWidth, canvas.clientHeight);
-      this.render();
-    };
-
-    this._onMouseUp = () => { this._isDragging = false; };
 
     this._onWheel = (e) => {
       e.preventDefault();
@@ -97,9 +76,6 @@ export class MapRenderer {
       if (this.renderer) { this.renderer.resizeCanvas(); this.render(); }
     };
 
-    canvas.addEventListener('mousedown',  this._onMouseDown);
-    window.addEventListener('mousemove',  this._onMouseMove);
-    window.addEventListener('mouseup',    this._onMouseUp);
     canvas.addEventListener('wheel',      this._onWheel, { passive: false });
     window.addEventListener('resize',     this._onResize);
 
@@ -179,6 +155,7 @@ export class MapRenderer {
       this.camera.x,
       this.camera.y,
       this.camera.zoom,
+      this.layers.isEnabled('events'),
     );
     this.climateLayer?.render(
       this.currentState,
@@ -246,14 +223,14 @@ export class MapRenderer {
     return bestR >= 0 ? bestR : null;
   }
 
-  private _isDragging = false;
-  private _lastX = 0;
-  private _lastY = 0;
+  zoomToFit(): void {
+    this.camera.x = 500;
+    this.camera.y = 500;
+    this.camera.zoom = 0.2;
+    this.render();
+  }
 
   dispose(): void {
-    this.canvas.removeEventListener('mousedown',  this._onMouseDown);
-    window.removeEventListener('mousemove',       this._onMouseMove);
-    window.removeEventListener('mouseup',         this._onMouseUp);
     this.canvas.removeEventListener('wheel',      this._onWheel);
     window.removeEventListener('resize',          this._onResize);
     if (this.overlayCanvas?.parentElement) {

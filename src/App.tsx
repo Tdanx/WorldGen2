@@ -90,7 +90,7 @@ export default function App() {
   return (
     <>
       <AppShell
-        topBar={<TopBar onNew={() => setShowWizard(true)} onSave={saveWorld} onLoad={handleLoad} hasWorld={!!worldState} />}
+        topBar={<TopBar onNew={() => setShowWizard(true)} onSave={saveWorld} onLoad={handleLoad} hasWorld={!!worldState} onZoomFit={() => mapRenderer?.zoomToFit()} />}
         sidebar={<LayerSidebar layers={layers} onToggle={toggleLayer} />}
         canvas={<MapCanvas />}
         rightPanel={<RightPanel />}

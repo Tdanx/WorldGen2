@@ -40,6 +40,7 @@ export interface CivLifecycleState {
   stabilityScore: number;      // 0–100
   instabilityFlags: InstabilityFlag[];
   collapseRisk: number;        // 0–1
+  defeatTick?: number;         // tick when military_defeat flag was last set
 }
 
 export interface Civilization {

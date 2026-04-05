@@ -7,9 +7,10 @@ interface TopBarProps {
   onSave: () => { ok: boolean; error?: string };
   onLoad: () => Promise<LoadResult>;
   hasWorld: boolean;
+  onZoomFit: () => void;
 }
 
-export function TopBar({ onNew, onSave, onLoad, hasWorld }: TopBarProps) {
+export function TopBar({ onNew, onSave, onLoad, hasWorld, onZoomFit }: TopBarProps) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pendingLoad, setPendingLoad] = useState(false);
 
@@ -48,6 +49,7 @@ export function TopBar({ onNew, onSave, onLoad, hasWorld }: TopBarProps) {
         style={pendingLoad ? { background: '#7a4a1a', color: '#fff' } : undefined}
       >{pendingLoad ? '⚠ Replace world?' : '📂 Load'}</button>
       <button className="btn btn-ghost" disabled style={{ opacity: 0.4 }}>📤 Export <span style={{ fontSize: 10 }}>(soon)</span></button>
+      <button className="btn btn-ghost" onClick={onZoomFit} disabled={!hasWorld} title="Zoom to fit world">⊡ Fit</button>
       <span style={{ flex: 1, textAlign: 'center', fontWeight: 600, letterSpacing: '0.08em', color: 'var(--accent)' }}>
         {feedback
           ? <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{feedback}</span>

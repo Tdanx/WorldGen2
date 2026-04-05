@@ -8,6 +8,7 @@ export interface LayerState {
   political: boolean;
   religion: boolean;
   culture: boolean;
+  events: boolean;
 }
 
 export const DEFAULT_LAYER_STATE: LayerState = {
@@ -18,6 +19,7 @@ export const DEFAULT_LAYER_STATE: LayerState = {
   political: false,
   religion: false,
   culture: false,
+  events: true,
 };
 
 export class LayerManager {

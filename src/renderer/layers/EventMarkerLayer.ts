@@ -39,6 +39,7 @@ export class EventMarkerLayer {
     camX: number,
     camY: number,
     camZoom: number,
+    enabled = true,
   ): void {
     // Sync overlay to canvas display size
     const w = this.webglCanvas.clientWidth;
@@ -52,7 +53,7 @@ export class EventMarkerLayer {
     if (!ctx) return;
     ctx.clearRect(0, 0, w, h);
 
-    if (!state || this.markers.length === 0) {
+    if (!enabled || !state || this.markers.length === 0) {
       this.ageMarkers();
       return;
     }

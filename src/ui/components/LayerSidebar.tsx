@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import type { LayerType } from '../../types/simulation';
 import type { LayerState } from '../../renderer/layers/LayerManager';
 import { worldEngine } from '../../hooks/useEngine';
@@ -7,18 +7,21 @@ import { useWorldStore } from '../../store/useWorldStore';
 interface LayerEntry {
   key: LayerType;
   label: string;
-  phase?: number;
 }
 
-const LAYERS: LayerEntry[] = [
-  { key: 'terrain',   label: 'Terrain'   },
-  { key: 'biome',     label: 'Biomes'    },
-  { key: 'rivers',    label: 'Rivers'    },
-  { key: 'climate',   label: 'Climate'  },
-  { key: 'political', label: 'Political' },
-  { key: 'religion',  label: 'Religion' },
-  { key: 'culture',   label: 'Culture',  phase: 3 },
+const OVERLAY_LAYERS: LayerEntry[] = [
+  { key: 'climate',   label: 'Climate'       },
+  { key: 'political', label: 'Political'      },
+  { key: 'religion',  label: 'Religion'       },
+  { key: 'events',    label: 'Event Markers'  },
 ];
+
+const LAYER_TOOLTIPS: Partial<Record<LayerType, string>> = {
+  climate:   'Temperature heatmap overlaid on terrain',
+  political: 'Civilization territory boundaries — visible once civilizations exist',
+  religion:  'Active faith spread across tiles — visible once religions exist',
+  events:    'Disaster and event icons that appear on the map',
+};
 
 interface LayerSidebarProps {
   layers: LayerState;
@@ -26,9 +29,15 @@ interface LayerSidebarProps {
 }
 
 export function LayerSidebar({ layers, onToggle }: LayerSidebarProps) {
-  const [tectonics, setTectonics] = useState(true);
-  const [erosion, setErosion]     = useState(true);
-  const hasWorld = useWorldStore(s => s.worldState !== null);
+  const [tectonics, setTectonics] = React.useState(true);
+  const [erosion, setErosion]     = React.useState(true);
+  const worldState = useWorldStore(s => s.worldState);
+  const hasWorld   = worldState !== null;
+  const hasCivs    = (worldState?.civilizations.size ?? 0) > 0;
+  const hasFaiths  = useMemo(
+    () => worldState?.tiles.some(t => t.religionId !== null) ?? false,
+    [worldState],
+  );
 
   function handleTectonics(enabled: boolean) {
     setTectonics(enabled);
@@ -42,35 +51,50 @@ export function LayerSidebar({ layers, onToggle }: LayerSidebarProps) {
 
   return (
     <div style={{ padding: '12px 8px' }}>
+
+      {/* BASE section — always-on WebGL layers */}
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: 8 }}>
-        LAYERS
+        BASE
       </div>
-      {LAYERS.map(({ key, label, phase }) => (
+      <div
+        title="Terrain mesh, biome colors, and river geometry — always rendered"
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', opacity: 0.5 }}
+      >
+        <span style={{ fontSize: 11 }}>&#x2588;</span>
+        <span style={{ flex: 1, fontSize: 13 }}>Terrain, Biomes, Rivers</span>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>always on</span>
+      </div>
+
+      {/* OVERLAYS section — togglable canvas layers */}
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.1em', marginTop: 14, marginBottom: 8 }}>
+        OVERLAYS
+      </div>
+      {OVERLAY_LAYERS.map(({ key, label }) => (
         <label
           key={key}
+          title={LAYER_TOOLTIPS[key]}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '5px 4px', cursor: phase ? 'not-allowed' : 'pointer',
-            opacity: phase ? 0.45 : 1,
-            borderRadius: 4,
+            padding: '5px 4px', cursor: 'pointer', borderRadius: 4,
           }}
         >
           <input
             type="checkbox"
             checked={layers[key]}
-            disabled={!!phase}
             onChange={() => onToggle(key)}
             style={{ accentColor: 'var(--accent)' }}
           />
           <span style={{ flex: 1 }}>{label}</span>
-          {phase && (
-            <span style={{ fontSize: 10, color: 'var(--text-dim)', background: 'var(--border)', padding: '1px 5px', borderRadius: 3 }} title="Coming in a future update">
-              Soon
-            </span>
+          {key === 'political' && layers.political && !hasCivs && (
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>no civs yet</span>
+          )}
+          {key === 'religion' && layers.religion && !hasFaiths && (
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>no faiths yet</span>
           )}
         </label>
       ))}
 
+      {/* GEOLOGY section — simulation toggles */}
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.1em', marginTop: 16, marginBottom: 8 }}>
         GEOLOGY
       </div>

@@ -7,16 +7,17 @@
 
 import type { Civilization, CivId, InstabilityFlag } from '../../types/civilization';
 import type { WorldState } from '../../types/world';
+import { SpeciesRegistry } from '../../registries/SpeciesRegistry';
 
 // Stability deltas applied every tick
-const FAMINE_PENALTY        = -3;
-const OVERSTRETCH_PENALTY   = -1;
-const MILITARY_DEFEAT_PENALTY = -5;  // applied for up to DEFEAT_DECAY_TICKS ticks
-const ACTIVE_WAR_PENALTY    = -2;
-const PEACE_BONUS           = +1;
-const TECH_ADVANCE_BONUS    = +2;
-const OVERSTRETCH_THRESHOLD = 50;    // territory tiles that triggers overstretched flag
-const DEFEAT_DECAY_TICKS    = 20;    // how long military_defeat keeps dealing -5/tick
+const FAMINE_PENALTY          = -3;
+const OVERSTRETCH_PENALTY     = -1;
+const MILITARY_DEFEAT_PENALTY = -3;  // was -5; applied for up to DEFEAT_DECAY_TICKS ticks
+const ACTIVE_WAR_PENALTY      = -2;
+const PEACE_BONUS             = +2;  // was +1
+const TECH_ADVANCE_BONUS      = +2;
+const OVERSTRETCH_THRESHOLD   = 50;  // territory tiles that triggers overstretched flag
+const DEFEAT_DECAY_TICKS      = 10;  // was 20; max total defeat impact = -30
 
 export function updateStability(
   civ: Civilization,
@@ -31,26 +32,33 @@ export function updateStability(
   // Work with a mutable copy of flags
   const flags = new Set<InstabilityFlag>(instabilityFlags);
 
+  // Resilience trait reduces all penalties (range 0.6–1.0 multiplier)
+  const speciesDef  = SpeciesRegistry.get(civ.speciesId);
+  const resilience  = speciesDef?.traits.resilience ?? 0;
+  const penaltyMult = 1 - resilience * 0.4;
+
   // ── Penalties ────────────────────────────────────────────────────────────
 
   // Famine
   if (flags.has('famine')) {
-    stabilityScore += FAMINE_PENALTY;
+    stabilityScore += Math.round(FAMINE_PENALTY * penaltyMult);
   }
 
   // Overstretched borders
   if (civ.territory.length > OVERSTRETCH_THRESHOLD) {
     flags.add('overstretched_borders');
-    stabilityScore += OVERSTRETCH_PENALTY;
+    stabilityScore += Math.round(OVERSTRETCH_PENALTY * penaltyMult);
   } else {
     flags.delete('overstretched_borders');
   }
 
-  // Military defeat (decays after DEFEAT_DECAY_TICKS)
+  // Military defeat (decays after DEFEAT_DECAY_TICKS from when flag was stamped)
   if (flags.has('military_defeat')) {
-    const ticksInDefeat = state.tick - civ.lifecycle.phaseEnteredTick;
-    if (ticksInDefeat <= DEFEAT_DECAY_TICKS) {
-      stabilityScore += MILITARY_DEFEAT_PENALTY;
+    const ticksSinceDefeat = civ.lifecycle.defeatTick !== undefined
+      ? state.tick - civ.lifecycle.defeatTick
+      : DEFEAT_DECAY_TICKS + 1; // treat as expired if no timestamp (legacy safety)
+    if (ticksSinceDefeat <= DEFEAT_DECAY_TICKS) {
+      stabilityScore += Math.round(MILITARY_DEFEAT_PENALTY * penaltyMult);
     } else {
       flags.delete('military_defeat'); // flag expires
     }
@@ -62,7 +70,7 @@ export function updateStability(
       (w.aggressorId === civ.id || w.defenderId === civ.id),
   );
   if (atWar) {
-    stabilityScore += ACTIVE_WAR_PENALTY;
+    stabilityScore += Math.round(ACTIVE_WAR_PENALTY * penaltyMult);
   }
 
   // ── Bonuses ──────────────────────────────────────────────────────────────
@@ -71,9 +79,12 @@ export function updateStability(
     stabilityScore += TECH_ADVANCE_BONUS;
   }
 
-  // Peace bonus: no flags, no active war, already reasonably stable
-  if (!atWar && flags.size === 0 && stabilityScore > 60) {
-    stabilityScore += PEACE_BONUS;
+  // Peace bonus: no active war, above minimum threshold.
+  // Full bonus when completely stable; reduced bonus (+1) when only overstretch flag present
+  // so an expanding civ stays neutral (-1 overstretch + 1 peace = 0) rather than spiralling down.
+  const onlyOverstretched = flags.size === 1 && flags.has('overstretched_borders');
+  if (!atWar && (flags.size === 0 || onlyOverstretched) && stabilityScore > 20) {
+    stabilityScore += flags.size === 0 ? PEACE_BONUS : 1;
   }
 
   // Clamp to [0, 100]

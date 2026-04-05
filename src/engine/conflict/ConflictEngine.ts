@@ -9,6 +9,7 @@ import { makeEntryId } from '../core/idgen';
 import { makeWarDeclaredEntry, makeWarEndedEntry } from '../civilization/EventGenerator';
 import { WAR_THRESHOLD } from '../../utils/constants';
 import { mulberry32 } from '../../utils/rng';
+import { matrixKey } from '../diplomacy/DiplomacyEngine';
 
 // Two civs are considered neighbours if any owned tile is within this distance.
 // At spacing=5.5, cells are ~55 world-units wide; 20× = ~110 units ≈ 2 cells.
@@ -149,8 +150,9 @@ function resolveWar(state: WorldState, war: WarState): { state: WorldState; outc
         territory: newDefTerritory,
         lifecycle: {
           ...defender.lifecycle,
-          stabilityScore: Math.max(0, defender.lifecycle.stabilityScore - 30),
+          stabilityScore: Math.max(0, defender.lifecycle.stabilityScore - 15),
           instabilityFlags: [...new Set([...defender.lifecycle.instabilityFlags, 'military_defeat' as const])],
+          defeatTick: state.tick,
         },
       });
       // Update tile ownership for transferred tiles
@@ -168,6 +170,7 @@ function resolveWar(state: WorldState, war: WarState): { state: WorldState; outc
         lifecycle: {
           ...aggressor.lifecycle,
           instabilityFlags: [...new Set([...aggressor.lifecycle.instabilityFlags, 'military_defeat' as const])],
+          defeatTick: state.tick,
         },
       });
     }
@@ -275,6 +278,14 @@ export class ConflictEngine {
 
         const speciesA = SpeciesRegistry.get(civA.speciesId);
         if (!speciesA || speciesA.traits.aggression <= 0.5) continue;
+
+        // Don't declare war while a non-aggression pact is active
+        const dipEntry = next.diplomacyMatrix.get(matrixKey(civA.id, civB.id));
+        const hasActivePact = dipEntry?.pacts.some(
+          p => p.typeOf === 'non_aggression_pact' && !p.violated &&
+               (!p.expiryTick || p.expiryTick > next.tick),
+        );
+        if (hasActivePact) continue;
 
         // Declare war
         const war: WarState = {
