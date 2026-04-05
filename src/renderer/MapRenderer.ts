@@ -61,7 +61,6 @@ export class MapRenderer {
   private readonly _onMouseDown: (e: MouseEvent) => void;
   private readonly _onMouseMove: (e: MouseEvent) => void;
   private readonly _onMouseUp: () => void;
-  private readonly _onMouseLeave: () => void;
   private readonly _onWheel: (e: WheelEvent) => void;
   private readonly _onResize: () => void;
 
@@ -85,7 +84,6 @@ export class MapRenderer {
     };
 
     this._onMouseUp = () => { this._isDragging = false; };
-    this._onMouseLeave = () => { this._isDragging = false; };
 
     this._onWheel = (e) => {
       e.preventDefault();
@@ -100,9 +98,8 @@ export class MapRenderer {
     };
 
     canvas.addEventListener('mousedown',  this._onMouseDown);
-    canvas.addEventListener('mousemove',  this._onMouseMove);
-    canvas.addEventListener('mouseup',    this._onMouseUp);
-    canvas.addEventListener('mouseleave', this._onMouseLeave);
+    window.addEventListener('mousemove',  this._onMouseMove);
+    window.addEventListener('mouseup',    this._onMouseUp);
     canvas.addEventListener('wheel',      this._onWheel, { passive: false });
     window.addEventListener('resize',     this._onResize);
 
@@ -128,18 +125,14 @@ export class MapRenderer {
     this.climateOverlayCanvas = climateOverlay;
   }
 
-  private _initCount = 0;
-
   /** Call once after TerrainGenerator.generate() returns. */
   initialize(mesh: Mesh, map: MapGen4Map): void {
-    this._initCount++;
-    const initId = this._initCount;
-    console.log(`[MapRenderer.initialize #${initId}] start`);
+    // Dispose the previous WebGL renderer to avoid leaking GPU contexts
+    this.renderer?.dispose();
 
     this.mesh = mesh;
     this.map = map;
     this.renderer = new Renderer(mesh, this.canvas);
-    console.log(`[MapRenderer.initialize #${initId}] Renderer created`);
 
     const mountain_folds = (param.elevation as Record<string, number>).mountain_folds ?? 3;
     Geometry.setMapGeometry(map, mountain_folds, this.renderer.quad_elements, this.renderer.a_quad_em);
@@ -150,7 +143,6 @@ export class MapRenderer {
     const numRiverTriangles = Geometry.setRiverGeometry(map, param.spacing, riversRenderParam, this.renderer.a_river_xyww);
     this.renderer.numRiverTriangles = numRiverTriangles;
     this.renderer.updateMap();
-    console.log(`[MapRenderer.initialize #${initId}] updateMap done, calling render`);
     this.render();
     if (this.overlayCanvas) {
       this.politicalLayer = new PoliticalLayer(this.mesh!, this.overlayCanvas, this.canvas);
@@ -161,7 +153,6 @@ export class MapRenderer {
     if (this.climateOverlayCanvas) {
       this.climateLayer = new ClimateLayer(this.mesh!, this.climateOverlayCanvas, this.canvas);
     }
-    console.log(`[MapRenderer.initialize #${initId}] render called, renderParam set`);
   }
 
   /** Trigger a redraw with current camera state. */
@@ -234,7 +225,11 @@ export class MapRenderer {
   /** Convert screen pixel coords to nearest tile (region) index. */
   screenToTile(screenX: number, screenY: number): number | null {
     if (!this.renderer || !this.mesh) return null;
-    const [wx, wy] = this.renderer.screenToWorld([screenX, screenY]);
+    // screenToWorld expects normalized [0,1] coords, not raw pixels
+    const [wx, wy] = this.renderer.screenToWorld([
+      screenX / this.canvas.clientWidth,
+      screenY / this.canvas.clientHeight,
+    ]);
     return this.findNearestRegion(wx, wy);
   }
 
@@ -257,9 +252,8 @@ export class MapRenderer {
 
   dispose(): void {
     this.canvas.removeEventListener('mousedown',  this._onMouseDown);
-    this.canvas.removeEventListener('mousemove',  this._onMouseMove);
-    this.canvas.removeEventListener('mouseup',    this._onMouseUp);
-    this.canvas.removeEventListener('mouseleave', this._onMouseLeave);
+    window.removeEventListener('mousemove',       this._onMouseMove);
+    window.removeEventListener('mouseup',         this._onMouseUp);
     this.canvas.removeEventListener('wheel',      this._onWheel);
     window.removeEventListener('resize',          this._onResize);
     if (this.overlayCanvas?.parentElement) {

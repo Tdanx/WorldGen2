@@ -37,10 +37,10 @@ export interface SaveData {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/** Serialize current world to localStorage. No-op if no world is loaded. */
-export function saveWorld(): void {
+/** Serialize current world to localStorage. Returns `{ ok: true }` on success or `{ ok: false, error }` on failure. */
+export function saveWorld(): { ok: boolean; error?: string } {
   const state = worldEngine.getState();
-  if (!state) return;
+  if (!state) return { ok: false };
 
   const save: SaveFile = {
     version: 1,
@@ -60,7 +60,14 @@ export function saveWorld(): void {
     })),
   };
 
-  localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+    return { ok: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('saveWorld failed:', err);
+    return { ok: false, error: `Save failed: ${msg}` };
+  }
 }
 
 /**
@@ -92,7 +99,8 @@ export function parseSave(): SaveData | null {
     }));
 
     return { state, religions };
-  } catch {
+  } catch (e) {
+    console.error('parseSave failed:', e);
     return null;
   }
 }

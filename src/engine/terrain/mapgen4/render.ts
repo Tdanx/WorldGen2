@@ -141,7 +141,7 @@ class WebGLWrapper {
     }
 
     drawToScreen(): Framebuffer {
-        return this._createFramebufferWrapper(null, null, true);
+        return this._createFramebufferWrapper(null, null, false);
     }
 
     createFramebuffer(width: number, height: number, options: {depth?: boolean, internalFormat?: GLenum, format?: GLenum, filter: 'linear'|'nearest'}): Framebuffer {
@@ -454,6 +454,14 @@ const fbo_texture_size: number = 2048;
 
 export default class Renderer {
     numRiverTriangles: number = 0;
+    private _stopped: boolean = false;
+
+    dispose(): void {
+        this._stopped = true;
+        // Do NOT call loseContext() — the canvas retains exactly one WebGL context
+        // for its lifetime. Losing it here causes the next Renderer created on the
+        // same canvas to receive a lost context, breaking EXT_color_buffer_float.
+    }
 
     topdown: mat4;
     projection: mat4;
@@ -468,6 +476,7 @@ export default class Renderer {
     screenshotCanvas: HTMLCanvasElement;
     screenshotCallback: () => void;
     renderParam: any;
+    private _lastRenderParam: any = undefined;
 
     webgl: WebGLWrapper;
 
@@ -592,7 +601,6 @@ export default class Renderer {
         let size = canvas.clientWidth;
         size = 2048; /* could be smaller to increase performance */
         if (canvas.width !== size || canvas.height !== size) {
-            console.log(`Resizing canvas from ${canvas.width}x${canvas.height} to ${size}x${size}`);
             canvas.width = canvas.height = size;
             this.webgl.gl.viewport(0, 0, canvas.width, canvas.height);
         }
@@ -687,15 +695,16 @@ export default class Renderer {
 
         /* Only draw when render parameters have been passed in;
          * otherwise skip the render and wait for the next tick */
-        const loopId = Math.random().toFixed(4);
-        console.log(`[Renderer RAF loop ${loopId}] started`);
         clearBuffers();
         const renderLoop = () => {
+            if (this._stopped) return;
             requestAnimationFrame(renderLoop);
-            const renderParam = this.renderParam;
+            if (this.renderParam) {
+                this._lastRenderParam = this.renderParam;
+                this.renderParam = undefined;
+            }
+            const renderParam = this._lastRenderParam;
             if (!renderParam) { return; }
-            console.log(`[Renderer RAF loop ${loopId}] rendering frame`);
-            this.renderParam = undefined;
 
             if (this.numRiverTriangles > 0) {
                 this.drawRivers();

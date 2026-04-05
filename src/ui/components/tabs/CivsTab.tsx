@@ -19,7 +19,7 @@ export function CivsTab() {
     );
   }
 
-  const selected = selectedCiv ? worldState!.civilizations.get(selectedCiv) : null;
+  const selected = selectedCiv && worldState ? worldState.civilizations.get(selectedCiv) : null;
 
   return (
     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>

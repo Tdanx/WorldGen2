@@ -7,8 +7,8 @@ import { distance2D } from '../../utils/math';
 const EXPANSION_RADIUS = 100;       // world-units
 const MIN_POP_TO_EXPAND = 50;
 const MAX_POP_PER_TILE = 500;
-const FAMINE_FERTILITY_THRESHOLD = 0.1;
-const FAMINE_DEATH_RATE = 0.01;     // 1% population loss per tick during famine
+const FAMINE_FERTILITY_THRESHOLD = 0.05;
+const FAMINE_DEATH_RATE = 0.005;    // 0.5% population loss per tick during famine
 const BASE_GROWTH_RATE = 0.02;      // 2% base growth per tick
 const EXPANSION_TRAIT_WEIGHT = 0.5;
 

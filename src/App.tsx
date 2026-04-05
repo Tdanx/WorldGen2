@@ -13,15 +13,17 @@ import { spawnCivilizations } from './engine/civilization/CivSpawner';
 import { mapRenderer } from './renderer/instance';
 import { useEngine, simulationLoop, worldEngine } from './hooks/useEngine';
 import type { WorldConfig } from './types/world';
-import { parseSave, saveWorld, applyLoadedState } from './utils/serialization';
+import { parseSave, saveWorld, hasSave, applyLoadedState } from './utils/serialization';
+import type { LoadResult } from './ui/components/TopBar';
 
 // TerrainGenerator is stateless — one instance is fine
 const terrainGen = new TerrainGenerator();
 
 export default function App() {
   const [showWizard, setShowWizard] = useState(true);
-  const { setWorldState, setGenerating } = useWorldStore();
-  const { layers, toggleLayer } = useSimulationStore();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { setWorldState, setGenerating, worldState } = useWorldStore();
+  const { layers, toggleLayer, setPaused, setHistoryLength } = useSimulationStore();
 
   useEngine(); // ensure engine singleton is initialized
   useEffect(() => {
@@ -29,9 +31,10 @@ export default function App() {
     return () => simulationLoop.stop();
   }, []);
 
-  async function handleLoad(): Promise<boolean> {
+  async function handleLoad(): Promise<LoadResult> {
+    if (!hasSave()) return 'no-save';
     const data = parseSave();
-    if (!data) return false;
+    if (!data) return 'corrupted';
     setShowWizard(false);
     setGenerating(true);
     try {
@@ -40,18 +43,22 @@ export default function App() {
       // Restore engine + registries, then initialize the renderer with the fresh mesh
       applyLoadedState(data);
       setWorldState(data.state);
+      setHistoryLength(0);
       mapRenderer?.initialize(result.mesh, result.map);
       mapRenderer?.render(data.state);
+      setPaused(false);
+      return 'ok';
     } catch (err) {
       console.error('Load error:', err);
+      return 'failed';
     } finally {
       setGenerating(false);
     }
-    return true;
   }
 
   async function handleGenerate(config: WorldConfig) {
     setShowWizard(false);
+    setErrorMessage(null);
     setGenerating(true);
     try {
       const result = await terrainGen.generate(config);
@@ -66,11 +73,15 @@ export default function App() {
         diplomacyMatrix: new Map(),
       };
       setWorldState(worldState);
+      setHistoryLength(0);
       worldEngine.initialize(worldState);
       mapRenderer?.initialize(result.mesh, result.map);
       mapRenderer?.render(worldState);
+      setPaused(false);
     } catch (err) {
       console.error('Generation error:', err);
+      setErrorMessage('World generation failed. Please try a different seed or size.');
+      setShowWizard(true);
     } finally {
       setGenerating(false);
     }
@@ -79,13 +90,19 @@ export default function App() {
   return (
     <>
       <AppShell
-        topBar={<TopBar onNew={() => setShowWizard(true)} onSave={saveWorld} onLoad={handleLoad} />}
+        topBar={<TopBar onNew={() => setShowWizard(true)} onSave={saveWorld} onLoad={handleLoad} hasWorld={!!worldState} />}
         sidebar={<LayerSidebar layers={layers} onToggle={toggleLayer} />}
         canvas={<MapCanvas />}
         rightPanel={<RightPanel />}
         timeBar={<TimeBar />}
       />
-      {showWizard && <WorldGenWizard onGenerate={handleGenerate} />}
+      {showWizard && (
+        <WorldGenWizard
+          onGenerate={handleGenerate}
+          onCancel={worldState ? () => setShowWizard(false) : undefined}
+          errorMessage={errorMessage}
+        />
+      )}
     </>
   );
 }

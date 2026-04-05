@@ -5,12 +5,15 @@ import { useWorldStore } from '../../store/useWorldStore';
 import { useSimulationStore } from '../../store/useSimulationStore';
 import { useCanvasInput } from '../../hooks/useCanvasInput';
 import { worldEngine } from '../../hooks/useEngine';
+import { useGodStore } from '../../store/useGodStore';
+import type { LayerType } from '../../types/simulation';
 
 export function MapCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isGenerating = useWorldStore(s => s.isGenerating);
   const worldState = useWorldStore(s => s.worldState);
   const layers = useSimulationStore(s => s.layers);
+  const activeTool = useGodStore(s => s.activeTool);
 
   useCanvasInput(canvasRef);
 
@@ -52,7 +55,15 @@ export function MapCanvas() {
       renderer.layers.setEnabled(key, initialLayers[key]);
     });
     setMapRenderer(renderer);
+
+    // Keep overlay layers in sync when the canvas container resizes (e.g. DevTools, sidebar)
+    const resizeObserver = new ResizeObserver(() => {
+      renderer.render();
+    });
+    resizeObserver.observe(canvasRef.current);
+
     return () => {
+      resizeObserver.disconnect();
       renderer.dispose();
       setMapRenderer(null);
     };
@@ -68,10 +79,26 @@ export function MapCanvas() {
         <div style={{
           position: 'absolute', inset: 0,
           background: 'rgba(0,0,0,0.6)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 16,
           color: 'var(--accent)', fontSize: 16, fontWeight: 700, letterSpacing: '0.1em',
         }}>
-          Generating world...
+          <div className="generating-spinner" />
+          Generating world…
+        </div>
+      )}
+      {activeTool && (
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          background: 'rgba(0,0,0,0.72)',
+          color: 'var(--accent)',
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+          padding: '6px 12px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          pointerEvents: 'none',
+        }}>
+          <span>{activeTool === 'raise' ? '▲ RAISE MODE' : '▼ LOWER MODE'} — click or drag map to paint</span>
+          <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>ESC to cancel</span>
         </div>
       )}
     </div>

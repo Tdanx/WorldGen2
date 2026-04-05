@@ -28,7 +28,6 @@ export async function makeMesh(seed?: number, spacing?: number) {
         numBoundaryPoints: numExteriorBoundaryPoints,
     });
     let mesh = new TriangleMesh(meshInit) as Mesh;
-    console.log(`triangles = ${mesh.numTriangles} regions = ${mesh.numRegions}`);
 
     // Mark the triangles that are connected to a boundary region
     // TODO: store 8 bits per byte instead of 1 bit per byte, or maybe a Set

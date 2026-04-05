@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { LayerType } from '../../types/simulation';
 import type { LayerState } from '../../renderer/layers/LayerManager';
 import { worldEngine } from '../../hooks/useEngine';
+import { useWorldStore } from '../../store/useWorldStore';
 
 interface LayerEntry {
   key: LayerType;
@@ -27,6 +28,7 @@ interface LayerSidebarProps {
 export function LayerSidebar({ layers, onToggle }: LayerSidebarProps) {
   const [tectonics, setTectonics] = useState(true);
   const [erosion, setErosion]     = useState(true);
+  const hasWorld = useWorldStore(s => s.worldState !== null);
 
   function handleTectonics(enabled: boolean) {
     setTectonics(enabled);
@@ -62,8 +64,8 @@ export function LayerSidebar({ layers, onToggle }: LayerSidebarProps) {
           />
           <span style={{ flex: 1 }}>{label}</span>
           {phase && (
-            <span style={{ fontSize: 10, color: 'var(--text-dim)', background: 'var(--border)', padding: '1px 5px', borderRadius: 3 }}>
-              Ph{phase}
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', background: 'var(--border)', padding: '1px 5px', borderRadius: 3 }} title="Coming in a future update">
+              Soon
             </span>
           )}
         </label>
@@ -72,19 +74,21 @@ export function LayerSidebar({ layers, onToggle }: LayerSidebarProps) {
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.1em', marginTop: 16, marginBottom: 8 }}>
         GEOLOGY
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', cursor: 'pointer', borderRadius: 4 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', cursor: hasWorld ? 'pointer' : 'not-allowed', opacity: hasWorld ? 1 : 0.45, borderRadius: 4 }}>
         <input
           type="checkbox"
           checked={tectonics}
+          disabled={!hasWorld}
           onChange={e => handleTectonics(e.target.checked)}
           style={{ accentColor: 'var(--accent)' }}
         />
         <span style={{ flex: 1 }}>Tectonics</span>
       </label>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', cursor: 'pointer', borderRadius: 4 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', cursor: hasWorld ? 'pointer' : 'not-allowed', opacity: hasWorld ? 1 : 0.45, borderRadius: 4 }}>
         <input
           type="checkbox"
           checked={erosion}
+          disabled={!hasWorld}
           onChange={e => handleErosion(e.target.checked)}
           style={{ accentColor: 'var(--accent)' }}
         />

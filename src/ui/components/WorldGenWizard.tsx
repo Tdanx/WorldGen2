@@ -1,26 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { WorldConfig } from '../../types/world';
 import { WORLD_SIZE_PRESETS, DEFAULT_WORLD_CONFIG } from '../../utils/constants';
 
 interface WorldGenWizardProps {
   onGenerate: (config: WorldConfig) => void;
+  onCancel?: () => void;
+  errorMessage?: string | null;
 }
 
 type SizeKey = keyof typeof WORLD_SIZE_PRESETS;
 
-export function WorldGenWizard({ onGenerate }: WorldGenWizardProps) {
+export function WorldGenWizard({ onGenerate, onCancel, errorMessage }: WorldGenWizardProps) {
   const [seed, setSeed] = useState(() => String(Math.floor(Math.random() * 1_000_000)));
   const [size, setSize] = useState<SizeKey>('Medium');
   const [seaLevel, setSeaLevel] = useState(DEFAULT_WORLD_CONFIG.seaLevel);
+
+  const seedInt = parseInt(seed, 10);
+  const seedValid = seed.trim() !== '' && !isNaN(seedInt) && String(seedInt) === seed.trim();
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && onCancel) onCancel();
+      if (e.key === 'Enter') handleGenerate();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onCancel, seedValid, seedInt, size, seaLevel]);
 
   function randomizeSeed() {
     setSeed(String(Math.floor(Math.random() * 1_000_000)));
   }
 
   function handleGenerate() {
-    const parsedSeed = parseInt(seed, 10) || 12345;
+    if (!seedValid) return;
     onGenerate({
-      seed: parsedSeed,
+      seed: seedInt,
       spacing: WORLD_SIZE_PRESETS[size].spacing,
       seaLevel,
       mountainSpacing: DEFAULT_WORLD_CONFIG.mountainSpacing,
@@ -50,7 +64,8 @@ export function WorldGenWizard({ onGenerate }: WorldGenWizardProps) {
               value={seed}
               onChange={e => setSeed(e.target.value)}
               style={{
-                flex: 1, background: 'var(--bg)', border: '1px solid var(--border)',
+                flex: 1, background: 'var(--bg)',
+                border: `1px solid ${!seedValid && seed.trim() !== '' ? '#e05555' : 'var(--border)'}`,
                 color: 'var(--text)', borderRadius: 4, padding: '6px 10px', fontSize: 13,
               }}
             />
@@ -58,6 +73,9 @@ export function WorldGenWizard({ onGenerate }: WorldGenWizardProps) {
               Randomize
             </button>
           </div>
+          {!seedValid && seed.trim() !== '' && (
+            <span style={{ fontSize: 11, color: '#e05555' }}>Seed must be a whole number.</span>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -96,9 +114,22 @@ export function WorldGenWizard({ onGenerate }: WorldGenWizardProps) {
           </div>
         </div>
 
-        <button className="btn" onClick={handleGenerate} style={{ marginTop: 4, padding: '10px 0', fontSize: 14 }}>
-          Generate World
-        </button>
+        {errorMessage && (
+          <div style={{ fontSize: 12, color: '#e05555', background: 'rgba(224,85,85,0.1)', borderRadius: 4, padding: '8px 10px' }}>
+            {errorMessage}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onCancel && (
+            <button className="btn btn-ghost" onClick={onCancel} style={{ flex: 1, padding: '10px 0', fontSize: 14 }}>
+              Cancel
+            </button>
+          )}
+          <button className="btn" onClick={handleGenerate} disabled={!seedValid} style={{ flex: 2, marginTop: 4, padding: '10px 0', fontSize: 14 }}>
+            Generate World
+          </button>
+        </div>
       </div>
     </div>
   );

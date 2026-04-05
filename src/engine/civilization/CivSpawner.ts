@@ -7,7 +7,7 @@ import { distance2D } from '../../utils/math';
 import { createCiv } from './SpeciesFactory';
 
 const MIN_HABITABILITY = 0.3;
-const MIN_SPAWN_DISTANCE = 150; // mapgen4 world-coordinate units (0–1000 range)
+const MIN_SPAWN_DISTANCE = 100; // mapgen4 world-coordinate units (0–1000 range)
 
 export interface SpawnResult {
   civilizations: Map<CivId, Civilization>;
@@ -25,7 +25,7 @@ export interface SpawnResult {
 export function spawnCivilizations(
   tiles: ReadonlyArray<Tile>,
   seed: number,
-  numCivs = 6,
+  numCivs = 10,
 ): SpawnResult {
   const rng = mulberry32(seed);
 

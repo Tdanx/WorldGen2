@@ -2,6 +2,20 @@ import React from 'react';
 import { useSimulationStore } from '../../store/useSimulationStore';
 import { useWorldStore } from '../../store/useWorldStore';
 import { worldEngine } from '../../hooks/useEngine';
+import type { Era } from '../../types/civilization';
+import type { WorldState } from '../../types/world';
+
+const ERA_ORDER: Era[] = ['Stone', 'Bronze', 'Iron', 'Classical', 'Medieval', 'Renaissance', 'Industrial', 'Modern'];
+
+function getWorldAgeName(state: WorldState): string {
+  let topEra: Era = 'Stone';
+  for (const civ of state.civilizations.values()) {
+    if (ERA_ORDER.indexOf(civ.era) > ERA_ORDER.indexOf(topEra)) {
+      topEra = civ.era;
+    }
+  }
+  return `${topEra} Age`;
+}
 
 export function TimeBar() {
   const { paused, setPaused, speed, setSpeed, canRewind } = useSimulationStore();
@@ -50,7 +64,7 @@ export function TimeBar() {
       >
         {paused ? '▶' : '⏸'}
       </button>
-      <button className="btn btn-ghost" disabled title="Fast forward" style={{ fontSize: 11 }}>▶▶</button>
+      <button className="btn btn-ghost" disabled title="Fast forward — coming soon" style={{ fontSize: 11 }}>▶▶</button>
       <button
         className="btn btn-ghost"
         onClick={handleSkipToEnd}
@@ -60,7 +74,7 @@ export function TimeBar() {
       >▶|</button>
 
       <span style={{ flex: 1, textAlign: 'center', color: 'var(--text-dim)', fontSize: 12, letterSpacing: '0.04em' }}>
-        {hasWorld ? `Year ${worldState.tick} · Age of Legends` : '— no world —'}
+        {hasWorld ? `Year ${worldState!.tick} · ${getWorldAgeName(worldState!)}` : '— no world —'}
       </span>
 
       <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Speed</span>

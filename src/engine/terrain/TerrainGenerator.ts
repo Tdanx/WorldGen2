@@ -69,15 +69,12 @@ export function buildConstraintGrid(
     }
   }
 
-  const landCells = data.filter(v => v > 0).length;
-  console.log(`[buildConstraintGrid] seed=${seed} seaLevel=${seaLevel} seaBias=${(0.5 - seaLevel).toFixed(2)} landCells=${landCells}/${size * size}`);
   return data;
 }
 
 export class TerrainGenerator {
   async generate(config: WorldConfig): Promise<TerrainResult> {
     const { seed, spacing, mountainSpacing, seaLevel } = config;
-    console.log(`[TerrainGenerator] generate: seed=${seed} seaLevel=${seaLevel}`);
 
     // 1. Build Voronoi/Delaunay dual mesh (point generation is synchronous)
     const { mesh, t_peaks } = await makeMesh(seed, spacing);

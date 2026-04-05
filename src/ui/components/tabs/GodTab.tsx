@@ -6,7 +6,8 @@ import { useGodControls } from '../../../hooks/useGodControls';
 import { BiomeType } from '../../../types/terrain';
 import { SpeciesRegistry } from '../../../registries/SpeciesRegistry';
 import type { BlessingType, GodCommand } from '../../../types/simulation';
-import type { CivId } from '../../../types/civilization';
+import type { CivId, Civilization } from '../../../types/civilization';
+import type { Tile } from '../../../types/world';
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
@@ -78,6 +79,7 @@ const S = {
 
 function dispatch(cmd: GodCommand) {
   worldEngine.queueCommand(cmd);
+  worldEngine.flushCommands();
 }
 
 const BIOME_OPTIONS = Object.values(BiomeType).filter(
@@ -103,10 +105,11 @@ function NoWorldMsg() {
   );
 }
 
-function SelectionHint({ tileNeeded = false, civNeeded = false }: { tileNeeded?: boolean; civNeeded?: boolean }) {
+function SelectionHint({ tileNeeded = false, civNeeded = false, waterBlocked = false }: { tileNeeded?: boolean; civNeeded?: boolean; waterBlocked?: boolean }) {
   const parts: string[] = [];
-  if (tileNeeded) parts.push('select a tile on the map');
-  if (civNeeded)  parts.push('select a civilization in the Civs tab');
+  if (tileNeeded)    parts.push('select a tile on the map');
+  if (civNeeded)     parts.push('select a civilization in the Civs tab');
+  if (waterBlocked)  parts.push('select a land tile (cannot spawn on water)');
   if (parts.length === 0) return null;
   return <div style={S.hint}>Requires: {parts.join(' and ')}</div>;
 }
@@ -230,11 +233,13 @@ function DisastersSection({ selectedTile, selectedCiv }: { selectedTile: number 
 function CivilizationsSection({
   selectedTile,
   selectedCiv,
-  civIds,
+  civs,
+  selectedTileData,
 }: {
   selectedTile: number | null;
   selectedCiv: CivId | null;
-  civIds: CivId[];
+  civs: ReadonlyMap<CivId, Civilization>;
+  selectedTileData: Tile | null;
 }) {
   const [warCivA, setWarCivA] = useState<CivId>('');
   const [warCivB, setWarCivB] = useState<CivId>('');
@@ -242,9 +247,11 @@ function CivilizationsSection({
   const [spawnSpecies, setSpawnSpecies] = useState<string>('human');
 
   const allSpecies = SpeciesRegistry.getAll();
-  const noTile  = selectedTile === null;
-  const noCiv   = selectedCiv === null;
-  const noWar   = !warCivA || !warCivB || warCivA === warCivB;
+  const noTile   = selectedTile === null;
+  const noCiv    = selectedCiv === null;
+  const isWater  = selectedTileData?.isWater === true;
+  const noSpawn  = noTile || isWater;
+  const noWar    = !warCivA || !warCivB || warCivA === warCivB;
 
   return (
     <div style={S.section}>
@@ -256,11 +263,11 @@ function CivilizationsSection({
         <div style={S.row}>
           <select style={S.select} value={warCivA} onChange={e => setWarCivA(e.target.value)}>
             <option value=''>— Aggressor —</option>
-            {civIds.map(id => <option key={id} value={id}>{id}</option>)}
+            {Array.from(civs.entries()).map(([id, civ]) => <option key={id} value={id}>{civ.name}</option>)}
           </select>
           <select style={S.select} value={warCivB} onChange={e => setWarCivB(e.target.value)}>
             <option value=''>— Defender —</option>
-            {civIds.map(id => <option key={id} value={id}>{id}</option>)}
+            {Array.from(civs.entries()).map(([id, civ]) => <option key={id} value={id}>{civ.name}</option>)}
           </select>
           <button
             style={S.btn(noWar, true)}
@@ -302,15 +309,15 @@ function CivilizationsSection({
           {allSpecies.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <button
-          style={S.btn(noTile)}
-          disabled={noTile}
+          style={S.btn(noSpawn)}
+          disabled={noSpawn}
           onClick={() => dispatch({ type: 'SPAWN_CIVILIZATION', tile: selectedTile!, speciesId: spawnSpecies })}
         >
           🌱 Spawn Civ
         </button>
       </div>
 
-      {(noTile || noCiv) && <SelectionHint tileNeeded={noTile} civNeeded={noCiv} />}
+      {(noTile || noCiv || isWater) && <SelectionHint tileNeeded={noTile} civNeeded={noCiv} waterBlocked={isWater} />}
     </div>
   );
 }
@@ -324,7 +331,7 @@ export function GodTab() {
 
   if (!worldState) return <NoWorldMsg />;
 
-  const civIds = Array.from(worldState.civilizations.keys());
+  const selectedTileData = selectedTile !== null ? (worldState.tiles[selectedTile] ?? null) : null;
 
   return (
     <div style={S.root}>
@@ -345,7 +352,7 @@ export function GodTab() {
 
       <TerrainSection selectedTile={selectedTile} />
       <DisastersSection selectedTile={selectedTile} selectedCiv={selectedCiv} />
-      <CivilizationsSection selectedTile={selectedTile} selectedCiv={selectedCiv} civIds={civIds} />
+      <CivilizationsSection selectedTile={selectedTile} selectedCiv={selectedCiv} civs={worldState.civilizations} selectedTileData={selectedTileData} />
     </div>
   );
 }
